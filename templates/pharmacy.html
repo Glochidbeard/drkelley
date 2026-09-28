@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Pharmacy - Dr. Kelley's Plant Clinic{% endblock %}
+{% block body %}
+<table class="panel" width="100%" cellspacing="0">
+  <tr><th class="panel-title">&#9879; The Pharmacy: Chemicals &amp; REIs &#9879;</th></tr>
+  <tr><td>
+    <form method="post" action="{{ url_for('pharmacy_save') }}" class="row-form">
+      <label for="c-name"><b>Chemical:</b></label>
+      <input id="c-name" type="text" name="name" list="chem-names" required>
+      <label for="c-rei"><b>REI (hours):</b></label>
+      <input id="c-rei" type="number" name="rei" min="0" step="0.5" required class="short">
+      <button type="submit">Add / Update</button>
+      <datalist id="chem-names">{% for c in chemicals %}<option value="{{ c.name }}">{% endfor %}</datalist>
+    </form>
+    <p class="hint">Type an existing name to change its REI, or a new name to add it.</p>
+
+    <table class="grid" width="100%" cellspacing="0" cellpadding="4">
+      <tr><th>Chemical</th><th>REI</th><th></th></tr>
+      {% for c in chemicals %}
+      <tr>
+        <td>{{ c.name }}</td>
+        <td class="num">{{ c.rei_hours|rei }}</td>
+        <td>
+          {% if c.id in used %}<span class="small">in use</span>{% else %}
+          <form method="post" action="{{ url_for('pharmacy_delete', cid=c.id) }}" class="inline"
+                onsubmit='return confirm({{ ("Remove " ~ c.name ~ "?")|tojson }});'>
+            <button type="submit" class="link danger-link">remove</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </td></tr>
+</table>
+{% endblock %}

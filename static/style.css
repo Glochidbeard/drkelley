@@ -1,0 +1,185 @@
+/* Dr. Kelley's Plant Clinic — circa 1996 */
+
+:root {
+  --bg: #008080;
+  --paper: #fffff0;
+  --ink: #000000;
+  --link: #0000ee;
+  --visited: #551a8b;
+  --title-bg: #000080;
+  --title-ink: #ffff00;
+  --bevel-light: #ffffff;
+  --bevel-dark: #808080;
+  --face: #c0c0c0;
+  --accent: #ff00ff;
+  --danger: #cc0000;
+  --picked: #ffff99;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: "Times New Roman", Times, serif;
+  font-size: 16px;
+  background-color: var(--bg);
+  /* tiled "leaf" wallpaper */
+  background-image:
+    radial-gradient(circle at 25% 25%, rgba(255,255,255,.12) 0 6px, transparent 7px),
+    radial-gradient(circle at 75% 75%, rgba(0,0,0,.12) 0 6px, transparent 7px);
+  background-size: 40px 40px;
+}
+
+.page {
+  max-width: 1280px;
+  margin: 12px auto;
+  padding: 12px;
+  background: var(--paper);
+  border: 4px ridge var(--face);
+}
+
+a { color: var(--link); }
+a:visited { color: var(--visited); }
+
+/* ── Masthead ── */
+.masthead { background: linear-gradient(#000080, #1084d0); color: #fff; border: 3px outset var(--face); }
+.masthead h1 {
+  margin: 0;
+  font-family: "Comic Sans MS", "Comic Sans", cursive;
+  font-size: 2.2em;
+  color: var(--title-ink);
+  text-shadow: 3px 3px 0 var(--accent);
+  text-align: center;
+}
+.masthead .logo { font-size: 2.6em; width: 60px; text-align: center; color: #7fff00; }
+.tagline { text-align: center; font-style: italic; color: #fff; }
+
+.marquee {
+  overflow: hidden;
+  white-space: nowrap;
+  background: #000;
+  color: #00ff00;
+  font-family: "Courier New", monospace;
+  padding: 3px 0;
+  margin: 6px 0;
+  border: 2px inset var(--face);
+}
+.marquee span { display: inline-block; padding-left: 100%; animation: scroll 28s linear infinite; }
+@keyframes scroll { to { transform: translateX(-100%); } }
+
+.navbar { text-align: center; margin: 8px 0; font-weight: bold; }
+
+.flash {
+  background: var(--picked);
+  border: 2px dashed var(--danger);
+  padding: 6px 10px;
+  margin: 8px 0;
+  font-weight: bold;
+}
+
+/* ── Two halves ── */
+.halves { display: flex; gap: 14px; align-items: flex-start; }
+.half { flex: 1 1 0; min-width: 0; }
+@media (max-width: 860px) {
+  .halves { flex-direction: column; }
+  .half { width: 100%; }
+}
+
+.panel { border: 3px outset var(--face); background: #fff; margin-bottom: 14px; }
+.panel > tbody > tr > td { padding: 10px; }
+.panel-title {
+  background: var(--title-bg);
+  color: var(--title-ink);
+  font-family: "Comic Sans MS", "Comic Sans", cursive;
+  font-size: 1.15em;
+  padding: 5px;
+  text-align: left;
+}
+.chart .panel-title { background: #800000; }
+
+/* ── Tables ── */
+.grid { border-collapse: collapse; }
+.grid th { background: var(--face); border: 2px outset var(--face); font-size: .9em; }
+.grid td { border: 1px solid var(--bevel-dark); vertical-align: top; }
+.grid tr:nth-child(even) td { background: #f0f8f0; }
+.grid tr.editing td { background: var(--picked); }
+.grid input[type=text] { width: 100%; }
+.num { text-align: center; font-weight: bold; }
+.nowrap { white-space: nowrap; }
+
+.formtable td:first-child { font-weight: bold; text-align: right; white-space: nowrap; }
+.formtable input[type=text], .formtable select { width: 100%; min-width: 220px; }
+
+/* ── Controls ── */
+input[type=text], input[type=number], select {
+  font-family: inherit;
+  font-size: 1em;
+  padding: 2px 4px;
+  border: 2px inset var(--face);
+  background: #fff;
+  max-width: 100%;
+}
+input.short { width: 90px; }
+button {
+  font-family: "MS Sans Serif", Tahoma, Arial, sans-serif;
+  font-size: .9em;
+  background: var(--face);
+  border: 2px outset var(--face);
+  padding: 2px 10px;
+  cursor: pointer;
+}
+button:active { border-style: inset; }
+button:disabled { color: var(--bevel-dark); cursor: default; }
+button.big { font-size: 1em; font-weight: bold; padding: 4px 14px; }
+button.apply { font-weight: bold; color: #006400; white-space: nowrap; }
+button.danger { color: var(--danger); font-weight: bold; }
+button.link {
+  background: none; border: none; padding: 0;
+  color: var(--link); text-decoration: underline; font-family: inherit; font-size: 1em;
+}
+button.danger-link { color: var(--danger); }
+
+.row-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; }
+.row-form input[type=text] { flex: 1 1 160px; }
+form.inline { display: inline; }
+
+/* ── Affliction list ── */
+.aff-list { list-style: none; padding: 0; margin: 0; }
+.aff-list li { padding: 3px 6px 3px 22px; position: relative; border-bottom: 1px dotted var(--bevel-dark); }
+.aff-list li::before { content: "\2618"; position: absolute; left: 4px; color: #008000; }
+.aff-list li.picked { background: var(--picked); font-weight: bold; }
+.aff-list li.picked::before { content: "\261E"; color: var(--danger); }
+.count { color: var(--bevel-dark); font-size: .85em; }
+
+.hint { font-style: italic; color: #333; margin: 6px 0; }
+.small { font-size: .85em; }
+
+.blink { color: var(--danger); font-weight: bold; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  .blink, .marquee span { animation: none; }
+  .marquee span { padding-left: 0; }
+}
+
+/* ── Footer ── */
+hr.groove { border: 0; border-top: 3px groove var(--face); margin: 14px 0; }
+.footer { text-align: center; }
+.counter { margin-bottom: 6px; }
+.digit {
+  display: inline-block;
+  background: #000;
+  color: #ff3030;
+  font-family: "Courier New", monospace;
+  font-weight: bold;
+  padding: 0 3px;
+  margin: 0 1px;
+  border: 1px solid var(--bevel-dark);
+}
+.construction {
+  background: repeating-linear-gradient(45deg, #ffcc00 0 8px, #000 8px 16px);
+  color: #fff;
+  padding: 0 6px;
+  font-weight: bold;
+  text-shadow: 1px 1px 0 #000;
+}

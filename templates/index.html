@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="halves">
+
+  <!-- ═══ LEFT: afflictions ═══ -->
+  <div class="half">
+    <table class="panel" width="100%" cellspacing="0">
+      <tr><th class="panel-title">&#9763; Afflictions &#9763;</th></tr>
+      <tr><td>
+        <form method="post" action="{{ url_for('add_affliction') }}" class="row-form">
+          <input type="hidden" name="current" value="{{ selected.id if selected else '' }}">
+          <label for="aff-name"><b>New affliction:</b></label>
+          <input id="aff-name" type="text" name="name" placeholder="e.g. Powdery mildew" required>
+          <button type="submit">Admit!</button>
+        </form>
+
+        {% if afflictions %}
+        <p class="hint">Click an affliction to open its chart. Templates on the right get applied to the one you pick.</p>
+        <ul class="aff-list">
+          {% for a in afflictions %}
+          <li class="{{ 'picked' if selected and selected.id == a.id }}">
+            <a href="{{ url_for('index', a=a.id) }}">{{ a.name }}</a>
+            <span class="count">({{ a.n_steps }} treatment{{ '' if a.n_steps == 1 else 's' }})</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="hint">No patients yet. Admit an affliction above.</p>
+        {% endif %}
+      </td></tr>
+    </table>
+
+    {% if selected %}
+    <table class="panel chart" width="100%" cellspacing="0">
+      <tr><th class="panel-title">&#9776; Chart: {{ selected.name }}</th></tr>
+      <tr><td>
+        {% if steps %}
+        <form method="post" action="{{ url_for('save_steps', aid=selected.id) }}">
+          <table class="grid" width="100%" cellspacing="0" cellpadding="4">
+            <tr><th>#</th><th>Treatment</th><th>Wait since previous</th><th>Frequency</th><th></th></tr>
+            {% for s in steps %}
+            <tr>
+              <td class="num">{{ loop.index }}</td>
+              <td>
+                <b>{{ s.template }}</b><br>
+                <span class="small">{{ s.method }} &middot; {{ s.chemical }} @ {{ s.rate }}<br>
+                {{ s.app_week|week_label }} &middot; REI {{ s.rei_hours|rei }}</span>
+              </td>
+              <td>
+                {% if loop.first %}
+                  <span class="small">&mdash; first treatment &mdash;</span>
+                {% else %}
+                  <input type="text" name="wait_{{ s.id }}" value="{{ s.wait }}" placeholder="e.g. 14 days" aria-label="Wait before treatment {{ loop.index }}">
+                  <div class="small">prev. REI: {{ steps[loop.index0 - 1].rei_hours|rei }}</div>
+                {% endif %}
+              </td>
+              <td><input type="text" name="freq_{{ s.id }}" value="{{ s.frequency }}" placeholder="e.g. every 7 days x3" aria-label="Frequency of treatment {{ loop.index }}"></td>
+              <td class="nowrap">
+                <button type="submit" formaction="{{ url_for('move_step', aid=selected.id, sid=s.id, dir='up') }}" title="Move up" {{ 'disabled' if loop.first }}>&uarr;</button>
+                <button type="submit" formaction="{{ url_for('move_step', aid=selected.id, sid=s.id, dir='down') }}" title="Move down" {{ 'disabled' if loop.last }}>&darr;</button>
+                <button type="submit" formaction="{{ url_for('delete_step', aid=selected.id, sid=s.id) }}" title="Remove from plan">&times;</button>
+              </td>
+            </tr>
+            {% endfor %}
+          </table>
+          <p><button type="submit" class="big">&#128190; Save Plan</button></p>
+        </form>
+        {% else %}
+        <p class="hint">No treatments yet. Hit <b>&laquo; Apply</b> on a template to the right.</p>
+        {% endif %}
+
+        <hr class="groove">
+        <form method="post" action="{{ url_for('rename_affliction', aid=selected.id) }}" class="row-form">
+          <label for="rename"><b>Rename:</b></label>
+          <input id="rename" type="text" name="name" value="{{ selected.name }}" required>
+          <button type="submit">Rename</button>
+        </form>
+        <form method="post" action="{{ url_for('delete_affliction', aid=selected.id) }}"
+              onsubmit='return confirm({{ ("Delete " ~ selected.name ~ " and its whole treatment plan?")|tojson }});'>
+          <button type="submit" class="danger">Delete this affliction</button>
+        </form>
+      </td></tr>
+    </table>
+    {% endif %}
+  </div>
+
+  <!-- ═══ RIGHT: treatment templates ═══ -->
+  <div class="half">
+    <table class="panel" width="100%" cellspacing="0">
+      <tr><th class="panel-title">&#10010; {{ 'Edit' if editing else 'New' }} Treatment Template &#10010;</th></tr>
+      <tr><td>
+        <form method="post" action="{{ url_for('save_template') }}">
+          <input type="hidden" name="current" value="{{ selected.id if selected else '' }}">
+          {% if editing %}<input type="hidden" name="id" value="{{ editing.id }}">{% endif %}
+          <table class="formtable" cellpadding="4">
+            <tr>
+              <td><label for="t-name">Name:</label></td>
+              <td><input id="t-name" type="text" name="name" value="{{ editing.name if editing }}" placeholder="Name this application" required></td>
+            </tr>
+            <tr>
+              <td><label for="t-method">Method:</label></td>
+              <td><select id="t-method" name="method" required>
+                <option value="">-- choose --</option>
+                {% for m in methods %}<option {{ 'selected' if editing and editing.method == m }}>{{ m }}</option>{% endfor %}
+              </select></td>
+            </tr>
+            <tr>
+              <td><label for="t-chem">Chemical:</label></td>
+              <td><select id="t-chem" name="chemical_id" required>
+                <option value="">-- choose --</option>
+                {% for c in chemicals %}
+                <option value="{{ c.id }}" {{ 'selected' if editing and editing.chemical_id == c.id }}>{{ c.name }} (REI {{ c.rei_hours|rei }})</option>
+                {% endfor %}
+              </select></td>
+            </tr>
+            <tr>
+              <td><label for="t-rate">Rate:</label></td>
+              <td><input id="t-rate" type="text" name="rate" value="{{ editing.rate if editing }}" placeholder="e.g. 1 oz / 100 gal" required></td>
+            </tr>
+            <tr>
+              <td><label for="t-week">Week of application:</label></td>
+              <td><select id="t-week" name="app_week" required>
+                {% set chosen = editing.app_week if editing else this_week %}
+                {% for key, label in weeks %}
+                <option value="{{ key }}" {{ 'selected' if key == chosen }}>{{ label }}{{ ' (this week)' if key == this_week }}</option>
+                {% endfor %}
+              </select></td>
+            </tr>
+          </table>
+          <p>
+            <button type="submit" class="big">&#128190; {{ 'Update' if editing else 'Save' }} Template</button>
+            {% if editing %}<a href="{{ url_for('index', a=selected.id if selected else None) }}">cancel</a>{% endif %}
+          </p>
+        </form>
+      </td></tr>
+    </table>
+
+    <table class="panel" width="100%" cellspacing="0">
+      <tr><th class="panel-title">&#128220; Saved Templates</th></tr>
+      <tr><td>
+        {% if not templates %}
+          <p class="hint">No templates saved yet.</p>
+        {% else %}
+          {% if selected %}
+            <p class="hint">&laquo; Apply adds the template to <b>{{ selected.name }}</b> as its next treatment.</p>
+          {% else %}
+            <p class="hint"><span class="blink">NEW!</span> Pick an affliction on the left to start applying templates.</p>
+          {% endif %}
+          <table class="grid" width="100%" cellspacing="0" cellpadding="4">
+            <tr><th></th><th>Template</th><th>Details</th><th></th></tr>
+            {% for t in templates %}
+            <tr class="{{ 'editing' if editing and editing.id == t.id }}">
+              <td>
+                {% if selected %}
+                <form method="post" action="{{ url_for('apply_template', aid=selected.id, tid=t.id) }}">
+                  <button type="submit" class="apply">&laquo; Apply</button>
+                </form>
+                {% endif %}
+              </td>
+              <td><b>{{ t.name }}</b>
+                {% if usage.get(t.id) %}<div class="small">in {{ usage[t.id] }} plan{{ '' if usage[t.id] == 1 else 's' }}</div>{% endif %}
+              </td>
+              <td class="small">{{ t.method }} &middot; {{ t.chemical }} @ {{ t.rate }}<br>
+                {{ t.app_week|week_label }} &middot; REI {{ t.rei_hours|rei }}</td>
+              <td class="nowrap">
+                <a href="{{ url_for('index', a=selected.id if selected else None, edit=t.id) }}">edit</a>
+                <form method="post" action="{{ url_for('delete_template', tid=t.id) }}" class="inline"
+                      onsubmit='return confirm({{ ("Delete template " ~ t.name ~ "?" ~ ((" It will be removed from " ~ usage[t.id] ~ " treatment plan(s).") if usage.get(t.id) else ""))|tojson }});'>
+                  <input type="hidden" name="current" value="{{ selected.id if selected else '' }}">
+                  <button type="submit" class="link danger-link">delete</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </table>
+        {% endif %}
+      </td></tr>
+    </table>
+  </div>
+
+</div>
+{% endblock %}
