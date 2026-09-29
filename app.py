@@ -83,13 +83,6 @@ plan_steps = Table(
     Column("wait", Text, nullable=False, default=""),  # wait since the previous step
 )
 
-counters = Table(
-    "counters", meta,
-    Column("name", Text, primary_key=True),
-    Column("value", Integer, nullable=False, default=0),
-)
-
-
 def init_db():
     meta.create_all(engine)
     with engine.begin() as conn:
@@ -100,8 +93,6 @@ def init_db():
                 if name and name.lower() not in existing:
                     conn.execute(insert(chemicals).values(
                         name=name, rei_hours=float(row["REI"] or 0)))
-        if conn.scalar(select(counters.c.value).where(counters.c.name == "visits")) is None:
-            conn.execute(insert(counters).values(name="visits", value=0))
     engine.dispose()   # don't hand pooled connections to forked gunicorn workers
 
 
@@ -195,10 +186,6 @@ def index():
     aid = request.args.get("a", type=int)
     edit_id = request.args.get("edit", type=int)
     with engine.begin() as conn:
-        conn.execute(update(counters).where(counters.c.name == "visits")
-                     .values(value=counters.c.value + 1))
-        visits = conn.scalar(select(counters.c.value).where(counters.c.name == "visits"))
-
         step_counts = dict(conn.execute(
             select(plan_steps.c.affliction_id, func.count())
             .group_by(plan_steps.c.affliction_id)).all())
@@ -220,7 +207,7 @@ def index():
         templates=tmpl_list, usage=usage, editing=editing,
         chemicals=chem_list, methods=METHODS,
         weeks=week_options(editing["app_week"] if editing else None),
-        this_week=week_key(date.today()), visits=visits,
+        this_week=week_key(date.today()),
     )
 
 
@@ -237,11 +224,11 @@ def add_affliction():
         dup = conn.scalar(select(afflictions.c.id)
                           .where(func.lower(afflictions.c.name) == name.lower()))
         if dup:
-            flash(f"“{name}” is already on the chart.")
+            flash(f"“{name}” already exists.")
             return _home(dup)
         aid = conn.execute(insert(afflictions).values(name=name)
                            .returning(afflictions.c.id)).scalar()
-    flash(f"Admitted new patient: {name}")
+    flash(f"Added affliction: {name}")
     return _home(aid)
 
 
@@ -255,7 +242,7 @@ def rename_affliction(aid):
         dup = conn.scalar(select(afflictions.c.id).where(
             func.lower(afflictions.c.name) == name.lower(), afflictions.c.id != aid))
         if dup:
-            flash(f"“{name}” is already on the chart.")
+            flash(f"“{name}” already exists.")
             return _home(aid)
         conn.execute(update(afflictions).where(afflictions.c.id == aid).values(name=name))
     return _home(aid)
@@ -266,7 +253,7 @@ def delete_affliction(aid):
     with engine.begin() as conn:
         conn.execute(delete(plan_steps).where(plan_steps.c.affliction_id == aid))
         conn.execute(delete(afflictions).where(afflictions.c.id == aid))
-    flash("Affliction discharged.")
+    flash("Affliction deleted.")
     return _home()
 
 
@@ -284,7 +271,7 @@ def apply_template(aid, tid):
             affliction_id=aid, template_id=tid, position=last + 1,
             frequency="", wait=""))
         tname = conn.scalar(select(templates.c.name).where(templates.c.id == tid))
-    flash(f"Prescribed “{tname}” as treatment #{last + 1}.")
+    flash(f"Added “{tname}” as treatment #{last + 1}.")
     return _home(aid)
 
 
@@ -380,7 +367,7 @@ def delete_template(tid):
     return _home(aid)
 
 
-# ── Pharmacy (chemical / REI list) ────────────────────────────────────────────
+# ── Chemicals / REI list ────────────────────────────────────────────
 
 @app.get("/pharmacy")
 def pharmacy():

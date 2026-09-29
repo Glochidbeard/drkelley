@@ -3,48 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Dr. Kelley's Plant Clinic{% endblock %}</title>
+<title>{% block title %}Dr. Kelley{% endblock %}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <div class="page">
-  <table class="masthead" width="100%" cellpadding="6">
-    <tr>
-      <td class="logo">&#9764;</td>
-      <td>
-        <h1>Dr.&nbsp;Kelley's Plant Clinic</h1>
-        <div class="tagline">~*~ Treatment Plans For Ailing Flora Since 1996 ~*~</div>
-      </td>
-      <td class="logo">&#10048;</td>
-    </tr>
-  </table>
-  <div class="marquee" aria-hidden="true"><span>
-    &#9733; Welcome to the Clinic! &#9733; Admit an affliction on the left &#9733; Write a prescription on the right &#9733; Download CSVs for Viridian at the bottom &#9733; Always respect the REI! &#9733;
-  </span></div>
+  <div class="masthead">
+    <h1>Dr. Kelley</h1>
+    <div class="tagline">Treatment plans</div>
+  </div>
 
   <div class="navbar">
-    [ <a href="{{ url_for('index') }}">Clinic</a> ]
-    [ <a href="{{ url_for('pharmacy') }}">Pharmacy&nbsp;(REI&nbsp;list)</a> ]
+    [ <a href="{{ url_for('index') }}">Treatment Plans</a> ]
+    [ <a href="{{ url_for('pharmacy') }}">Chemicals &amp; REIs</a> ]
     [ <a href="{{ url_for('export_plans') }}">Download Plans CSV</a> ]
     [ <a href="{{ url_for('export_templates') }}">Download Templates CSV</a> ]
   </div>
 
   {% with msgs = get_flashed_messages() %}
-    {% if msgs %}<div class="flash">{% for m in msgs %}<div>&#9658; {{ m }}</div>{% endfor %}</div>{% endif %}
+    {% if msgs %}<div class="flash">{% for m in msgs %}<div>{{ m }}</div>{% endfor %}</div>{% endif %}
   {% endwith %}
 
   {% block body %}{% endblock %}
-
-  <hr class="groove">
-  <div class="footer">
-    {% if visits is defined %}
-    <div class="counter">You are visitor
-      {% for d in "%06d"|format(visits) %}<span class="digit">{{ d }}</span>{% endfor %}
-    </div>
-    {% endif %}
-    <div class="small">Best viewed in Netscape Navigator 3.0 at 800&times;600 &bull;
-      <span class="construction">UNDER CONSTRUCTION</span> &bull; Sign our guestbook (coming 1997)</div>
-  </div>
 </div>
 </body>
 </html>

@@ -5,17 +5,17 @@
   <!-- ═══ LEFT: afflictions ═══ -->
   <div class="half">
     <table class="panel" width="100%" cellspacing="0">
-      <tr><th class="panel-title">&#9763; Afflictions &#9763;</th></tr>
+      <tr><th class="panel-title">Afflictions</th></tr>
       <tr><td>
         <form method="post" action="{{ url_for('add_affliction') }}" class="row-form">
           <input type="hidden" name="current" value="{{ selected.id if selected else '' }}">
           <label for="aff-name"><b>New affliction:</b></label>
           <input id="aff-name" type="text" name="name" placeholder="e.g. Powdery mildew" required>
-          <button type="submit">Admit!</button>
+          <button type="submit">Add</button>
         </form>
 
         {% if afflictions %}
-        <p class="hint">Click an affliction to open its chart. Templates on the right get applied to the one you pick.</p>
+        <p class="hint">Click an affliction to open its treatment plan. Templates on the right get applied to the one you pick.</p>
         <ul class="aff-list">
           {% for a in afflictions %}
           <li class="{{ 'picked' if selected and selected.id == a.id }}">
@@ -25,14 +25,14 @@
           {% endfor %}
         </ul>
         {% else %}
-        <p class="hint">No patients yet. Admit an affliction above.</p>
+        <p class="hint">No afflictions yet. Add one above.</p>
         {% endif %}
       </td></tr>
     </table>
 
     {% if selected %}
     <table class="panel chart" width="100%" cellspacing="0">
-      <tr><th class="panel-title">&#9776; Chart: {{ selected.name }}</th></tr>
+      <tr><th class="panel-title">Treatment Plan: {{ selected.name }}</th></tr>
       <tr><td>
         {% if steps %}
         <form method="post" action="{{ url_for('save_steps', aid=selected.id) }}">
@@ -63,10 +63,10 @@
             </tr>
             {% endfor %}
           </table>
-          <p><button type="submit" class="big">&#128190; Save Plan</button></p>
+          <p><button type="submit" class="big">Save Plan</button></p>
         </form>
         {% else %}
-        <p class="hint">No treatments yet. Hit <b>&laquo; Apply</b> on a template to the right.</p>
+        <p class="hint">No treatments yet. Click <b>Apply</b> on a template to the right.</p>
         {% endif %}
 
         <hr class="groove">
@@ -87,7 +87,7 @@
   <!-- ═══ RIGHT: treatment templates ═══ -->
   <div class="half">
     <table class="panel" width="100%" cellspacing="0">
-      <tr><th class="panel-title">&#10010; {{ 'Edit' if editing else 'New' }} Treatment Template &#10010;</th></tr>
+      <tr><th class="panel-title">{{ 'Edit' if editing else 'New' }} Treatment Template</th></tr>
       <tr><td>
         <form method="post" action="{{ url_for('save_template') }}">
           <input type="hidden" name="current" value="{{ selected.id if selected else '' }}">
@@ -128,7 +128,7 @@
             </tr>
           </table>
           <p>
-            <button type="submit" class="big">&#128190; {{ 'Update' if editing else 'Save' }} Template</button>
+            <button type="submit" class="big">{{ 'Update' if editing else 'Save' }} Template</button>
             {% if editing %}<a href="{{ url_for('index', a=selected.id if selected else None) }}">cancel</a>{% endif %}
           </p>
         </form>
@@ -136,15 +136,15 @@
     </table>
 
     <table class="panel" width="100%" cellspacing="0">
-      <tr><th class="panel-title">&#128220; Saved Templates</th></tr>
+      <tr><th class="panel-title">Saved Templates</th></tr>
       <tr><td>
         {% if not templates %}
           <p class="hint">No templates saved yet.</p>
         {% else %}
           {% if selected %}
-            <p class="hint">&laquo; Apply adds the template to <b>{{ selected.name }}</b> as its next treatment.</p>
+            <p class="hint"><b>Apply</b> adds the template to <b>{{ selected.name }}</b> as its next treatment.</p>
           {% else %}
-            <p class="hint"><span class="blink">NEW!</span> Pick an affliction on the left to start applying templates.</p>
+            <p class="hint">Pick an affliction on the left to start applying templates.</p>
           {% endif %}
           <table class="grid" width="100%" cellspacing="0" cellpadding="4">
             <tr><th></th><th>Template</th><th>Details</th><th></th></tr>
@@ -153,7 +153,7 @@
               <td>
                 {% if selected %}
                 <form method="post" action="{{ url_for('apply_template', aid=selected.id, tid=t.id) }}">
-                  <button type="submit" class="apply">&laquo; Apply</button>
+                  <button type="submit" class="apply">Apply</button>
                 </form>
                 {% endif %}
               </td>
