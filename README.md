@@ -6,21 +6,25 @@ its ordered treatment plan. Exports two CSVs for Viridian.
 
 ## Exports
 
+An affliction is an issue (free text) on a species (picked from the species list).
+
 **`/export/plans.csv`** — one row per affliction:
 
-| Affliction | Treatment 1 | Frequency 1 | Treatment 2 | Wait 1-2 | Frequency 2 | Treatment 3 | Wait 2-3 | Frequency 3 | … |
+| Affliction | Species | Treatment 1 | Frequency 1 | Treatment 2 | Wait 1-2 | Frequency 2 | Treatment 3 | Wait 2-3 | Frequency 3 | … |
 
 Treatment cells hold the template name (unique), which joins to the templates CSV.
 
 **`/export/templates.csv`** — one row per template:
 
-| Template | Method | Chemical | Rate | Week of application (`2026-W40`) | REI (hours) |
+| Template | Method | Chemical | Rate | Week of application (`2026-W40`) | Inside (Yes/No) | Outside (Yes/No) | REI (hours) |
 
 ## Data
 
 - `chemicals` is seeded from `data/rei_list.csv` on startup (new names only —
   REI edits made on the Pharmacy page are never overwritten).
-- Tables are created automatically on boot; no migrations.
+- `species` is seeded the same way from `data/species.csv` (botanical names).
+- Tables are created on boot, and `_migrate()` in `app.py` adds any newer
+  columns to databases created by earlier versions.
 
 ## Run locally
 

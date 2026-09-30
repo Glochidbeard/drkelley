@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Species - Dr. Kelley{% endblock %}
+{% block body %}
+<table class="panel" width="100%" cellspacing="0">
+  <tr><th class="panel-title">Species ({{ species|length }})</th></tr>
+  <tr><td>
+    <form method="post" action="{{ url_for('species_add') }}" class="row-form">
+      <label for="s-name"><b>Add species:</b></label>
+      <input id="s-name" type="text" name="name" placeholder="Botanical name" required>
+      <button type="submit">Add</button>
+    </form>
+    <p class="hint">Loaded from the plant names list. Add any that are missing here.</p>
+
+    <table class="grid" width="100%" cellspacing="0" cellpadding="4">
+      <tr><th>Botanical name</th><th></th></tr>
+      {% for sp in species %}
+      <tr>
+        <td><i>{{ sp.name }}</i></td>
+        <td>
+          {% if sp.id in used %}<span class="small">in use</span>{% else %}
+          <form method="post" action="{{ url_for('species_delete', sid=sp.id) }}" class="inline"
+                onsubmit='return confirm({{ ("Remove " ~ sp.name ~ "?")|tojson }});'>
+            <button type="submit" class="link danger-link">remove</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </td></tr>
+</table>
+{% endblock %}
