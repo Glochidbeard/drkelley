@@ -7,6 +7,9 @@ its ordered treatment plan. Exports two CSVs for Viridian.
 ## Exports
 
 An affliction is an issue (free text) on a species (picked from the species list).
+The Issue box suggests Viridian's pest/disease names: Viridian finds a plant's
+plan by matching its Interactive Map pick to the issue name (case-insensitive,
+but spelling must match). The list lives in `ISSUE_SUGGESTIONS` in `app.py`.
 
 **`/export/plans.csv`** — one row per affliction:
 
@@ -16,12 +19,33 @@ Treatment cells hold the template name (unique), which joins to the templates CS
 
 **`/export/templates.csv`** — one row per template:
 
-| Template | Method | Chemical | Rate | Week of application (`2026-W40`) | Inside (Yes/No) | Outside (Yes/No) | REI (hours) |
+| Template | Method | Chemical | Rate | Week of application (`2026-W40`) | Inside (Yes/No) | Outside (Yes/No) | REI (hours) | Application type | Plant of interest | X | Repeat every | Repeat unit |
+
+The last five columns describe when a template is used:
+
+| Column | Values |
+|---|---|
+| Application type | `Rotational`: applied on a rule (below). `Responsive`: used against an outbreak, following the affliction's plan. Templates saved before this column existed export as `Responsive`. |
+| Plant of interest | Rotational only: `Liners about to be shifted` or `Liners shifted X weeks ago` (literal text, X included). Empty for responsive. |
+| X | Whole number of weeks for `Liners shifted X weeks ago`, else empty. |
+| Repeat every | Optional repeat interval as a plain number (`2`, `1.5`), else empty. |
+| Repeat unit | `Days`, `Weeks`, `Months` or `Years`; empty whenever Repeat every is empty. |
+
+Example rows:
+
+```
+RS drench,Drench,Rootshield Plus WP,4 oz/100 gal,2026-W44,Yes,Yes,4,Rotational,Liners shifted X weeks ago,3,2,Weeks
+Aphid knockdown,Foliar spray,Conserve SC,6 oz/100 gal,2026-W44,Yes,Yes,4,Responsive,,,,
+```
+
+Dr. Kelley is never connected to Viridian. Download both CSVs and upload them in
+Viridian (Pesticides > Dr. Kelley) whenever they change. Viridian matches columns
+by header name, so don't rename them.
 
 ## Data
 
 - `chemicals` is seeded from `data/rei_list.csv` on startup (new names only —
-  REI edits made on the Pharmacy page are never overwritten).
+  REI edits made on the Chemicals & REIs page are never overwritten).
 - `species` is seeded the same way from `data/species.csv` (botanical names).
 - Tables are created on boot, and `_migrate()` in `app.py` adds any newer
   columns to databases created by earlier versions.

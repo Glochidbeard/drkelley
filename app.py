@@ -4,10 +4,12 @@ An affliction is a specific issue on a specific species (left). Each gets an
 ordered list of saved treatment templates (right).
 Two CSV exports feed Viridian:
   /export/plans.csv      one row per affliction: species, treatments, frequencies, waits
-  /export/templates.csv  one row per template: method, chemical, rate, week, inside/outside, REI
+  /export/templates.csv  one row per template: method, chemical, rate, week, inside/outside, REI,
+                         rotational/responsive + the rotation rule
 """
 import csv
 import io
+import math
 import os
 from datetime import date, timedelta
 
@@ -22,6 +24,21 @@ REI_CSV = os.path.join(BASE_DIR, "data", "rei_list.csv")
 SPECIES_CSV = os.path.join(BASE_DIR, "data", "species.csv")
 
 METHODS = ["Drench", "Foliar spray", "Drizzle"]
+# Rotational applications follow a rule (which plants, how often); responsive
+# ones are used against an outbreak and follow the affliction's plan.
+ROTATIONAL, RESPONSIVE = "Rotational", "Responsive"
+PLANTS_OF_INTEREST = ["Liners about to be shifted", "Liners shifted X weeks ago"]
+NEEDS_X = {"Liners shifted X weeks ago"}
+REPEAT_UNITS = ["Days", "Weeks", "Months", "Years"]
+# Suggested issue names. Viridian matches its Interactive Map pest/disease to the
+# affliction name (case-insensitive), so keep these spelled like Viridian's
+# DEFAULT_AFFLICTIONS in viridian/modules/pesticide.py.
+ISSUE_SUGGESTIONS = {
+    "Pest": ["Ants", "Root Aphids", "Aphids", "Rabbits", "Gophers", "Mealybugs", "Scale",
+             "Spider mites", "Thrips", "Whiteflies", "Fungus gnats", "Snails & slugs"],
+    "Disease": ["Root rot", "Phytophthora", "Powdery mildew", "Botrytis", "Rust",
+                "Leaf spot", "Damping off", "Fusarium"],
+}
 WEEKS_BACK, WEEKS_AHEAD = 4, 52
 
 app = Flask(__name__)
@@ -81,6 +98,11 @@ templates = Table(
     Column("app_week", Text, nullable=False),          # ISO "2026-W40"
     Column("inside", Boolean),                         # can be applied inside?
     Column("outside", Boolean),                        # can be applied outside?
+    Column("app_type", Text),                          # Rotational | Responsive
+    Column("rule_plant", Text),                        # rotational: plant of interest
+    Column("rule_x", Integer),                         # rotational: the X in the rule
+    Column("repeat_every", Float),                     # rotational: repeat every Z …
+    Column("repeat_unit", Text),                       # … Y (Days/Weeks/Months/Years)
     Column("created_at", DateTime, server_default=func.now()),
 )
 
@@ -105,9 +127,11 @@ def _migrate(conn):
     conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ux_afflictions_name_species "
                       "ON afflictions (lower(name), species_id)"))
     tmpl_cols = {c["name"] for c in insp.get_columns("treatment_templates")}
-    for col in ("inside", "outside"):
+    for col, typ in (("inside", "BOOLEAN"), ("outside", "BOOLEAN"), ("app_type", "TEXT"),
+                     ("rule_plant", "TEXT"), ("rule_x", "INTEGER"),
+                     ("repeat_every", "FLOAT"), ("repeat_unit", "TEXT")):
         if col not in tmpl_cols:
-            conn.execute(text(f"ALTER TABLE treatment_templates ADD COLUMN {col} BOOLEAN"))
+            conn.execute(text(f"ALTER TABLE treatment_templates ADD COLUMN {col} {typ}"))
 
 
 def _sqlite_drop_name_unique():
@@ -196,6 +220,18 @@ def fmt_rei(h):
     return f"{h:g}h"
 
 
+def rule_text(t):
+    """'Liners shifted 3 weeks ago, repeat every 2 Weeks' — or '' for responsive."""
+    if t["app_type"] != ROTATIONAL:
+        return ""
+    plant = t["rule_plant"] or ""
+    if plant in NEEDS_X and t["rule_x"] is not None:
+        plant = plant.replace("X", str(t["rule_x"]))
+    if t["repeat_every"]:
+        plant += f", repeat every {t['repeat_every']:g} {t['repeat_unit'] or ''}".rstrip()
+    return plant
+
+
 def yes_no(v):
     return "" if v is None else ("Yes" if v else "No")
 
@@ -203,6 +239,7 @@ def yes_no(v):
 app.jinja_env.filters["week_label"] = week_label
 app.jinja_env.filters["rei"] = fmt_rei
 app.jinja_env.filters["yes_no"] = yes_no
+app.jinja_env.filters["rule_text"] = rule_text
 
 
 def _parse_yes_no(v):
@@ -291,6 +328,8 @@ def index():
         templates=tmpl_list, usage=usage, editing=editing,
         chemicals=chem_list, methods=METHODS,
         weeks=week_options(editing["app_week"] if editing else None),
+        plants_of_interest=PLANTS_OF_INTEREST, needs_x=NEEDS_X, repeat_units=REPEAT_UNITS,
+        issue_suggestions=ISSUE_SUGGESTIONS,
         this_week=week_key(date.today()),
     )
 
@@ -417,6 +456,8 @@ def save_template():
         "app_week": f.get("app_week", ""),
         "inside": _parse_yes_no(f.get("inside")),
         "outside": _parse_yes_no(f.get("outside")),
+        "app_type": ROTATIONAL if f.get("rotational") else RESPONSIVE,
+        "rule_plant": None, "rule_x": None, "repeat_every": None, "repeat_unit": None,
     }
     problems = []
     if not vals["name"]:
@@ -433,6 +474,25 @@ def save_template():
         problems.append("inside Yes/No")
     if vals["outside"] is None:
         problems.append("outside Yes/No")
+    if vals["app_type"] == ROTATIONAL:
+        vals["rule_plant"] = f.get("rule_plant", "")
+        if vals["rule_plant"] not in PLANTS_OF_INTEREST:
+            problems.append("a plant of interest for the rotation")
+        elif vals["rule_plant"] in NEEDS_X:
+            vals["rule_x"] = f.get("rule_x", type=int)
+            if vals["rule_x"] is None or vals["rule_x"] < 0:
+                problems.append("the number of weeks (X)")
+        every = f.get("repeat_every", "").strip()
+        if every:   # repeating is optional
+            try:
+                vals["repeat_every"] = float(every)
+                if not math.isfinite(vals["repeat_every"]) or vals["repeat_every"] <= 0:
+                    raise ValueError
+            except ValueError:
+                problems.append("a positive repeat number")
+            vals["repeat_unit"] = f.get("repeat_unit", "")
+            if vals["repeat_unit"] not in REPEAT_UNITS:
+                problems.append("a repeat unit")
     if problems:
         flash("Template still needs " + ", ".join(problems) + ".")
         return _home(aid, edit=tid)
@@ -603,9 +663,14 @@ def export_plans():
 def export_templates():
     with engine.begin() as conn:
         rows = [["Template", "Method", "Chemical", "Rate", "Week of application",
-                 "Inside", "Outside", "REI (hours)"]]
+                 "Inside", "Outside", "REI (hours)", "Application type",
+                 "Plant of interest", "X", "Repeat every", "Repeat unit"]]
         rows += [[t["name"], t["method"], t["chemical"], t["rate"], t["app_week"],
-                  yes_no(t["inside"]), yes_no(t["outside"]), f"{t['rei_hours']:g}"]
+                  yes_no(t["inside"]), yes_no(t["outside"]), f"{t['rei_hours']:g}",
+                  t["app_type"] or RESPONSIVE, t["rule_plant"] or "",
+                  "" if t["rule_x"] is None else t["rule_x"],
+                  "" if t["repeat_every"] is None else f"{t['repeat_every']:g}",
+                  t["repeat_unit"] or ""]
                  for t in _template_rows(conn)]
     return _csv_response(rows, "dr_kelley_treatment_templates.csv")
 

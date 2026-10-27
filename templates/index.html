@@ -12,7 +12,7 @@
           <table class="formtable" cellpadding="4">
             <tr>
               <td><label for="aff-name">Issue:</label></td>
-              <td><input id="aff-name" type="text" name="name" placeholder="e.g. Powdery mildew" required></td>
+              <td><input id="aff-name" type="text" name="name" list="issue-options" autocomplete="off" placeholder="e.g. Powdery mildew" required></td>
             </tr>
             <tr>
               <td><label for="aff-species">Species:</label></td>
@@ -88,7 +88,7 @@
           <table class="formtable" cellpadding="4">
             <tr>
               <td><label for="edit-name">Issue:</label></td>
-              <td><input id="edit-name" type="text" name="name" value="{{ selected.name }}" required></td>
+              <td><input id="edit-name" type="text" name="name" value="{{ selected.name }}" list="issue-options" autocomplete="off" required></td>
             </tr>
             <tr>
               <td><label for="edit-species">Species:</label></td>
@@ -161,6 +161,44 @@
             </tr>
             {% endfor %}
           </table>
+
+          {% set rot = editing and editing.app_type == "Rotational" %}
+          <fieldset class="rotation">
+            <legend>Application type</legend>
+            <label><input type="checkbox" id="t-rotational" name="rotational" value="1" {{ 'checked' if rot }}>
+              <b>Rotational</b> &mdash; follows a rule about when it's applied</label>
+            <div class="small">Leave unchecked for a <b>responsive</b> application (used against an outbreak, following the affliction's plan).</div>
+            <table class="formtable" cellpadding="4" id="rotation-rule" {{ '' if rot else 'hidden' }}>
+              <tr>
+                <td><label for="t-plant">Plant of interest:</label></td>
+                <td><select id="t-plant" name="rule_plant">
+                  <option value="">-- choose --</option>
+                  {% for p in plants_of_interest %}
+                  <option {{ 'selected' if editing and editing.rule_plant == p }}>{{ p }}</option>
+                  {% endfor %}
+                </select></td>
+              </tr>
+              <tr id="rule-x-row">
+                <td><label for="t-x">X (weeks):</label></td>
+                <td><input id="t-x" type="number" name="rule_x" min="0" step="1"
+                           value="{{ editing.rule_x if editing and editing.rule_x is not none }}" placeholder="e.g. 3"></td>
+              </tr>
+              <tr>
+                <td><label for="t-every">Repeat every:</label></td>
+                <td>
+                  <input id="t-every" type="number" name="repeat_every" min="0" step="any" class="short"
+                         value="{{ '%g'|format(editing.repeat_every) if editing and editing.repeat_every }}" placeholder="Z">
+                  <select name="repeat_unit" class="unit" aria-label="Repeat unit">
+                    <option value="">-- unit --</option>
+                    {% for u in repeat_units %}
+                    <option {{ 'selected' if editing and editing.repeat_unit == u }}>{{ u }}</option>
+                    {% endfor %}
+                  </select>
+                  <span class="small">(optional)</span>
+                </td>
+              </tr>
+            </table>
+          </fieldset>
           <p>
             <button type="submit" class="big">{{ 'Update' if editing else 'Save' }} Template</button>
             {% if editing %}<a href="{{ url_for('index', a=selected.id if selected else None) }}">cancel</a>{% endif %}
@@ -196,7 +234,8 @@
               </td>
               <td class="small">{{ t.method }} &middot; {{ t.chemical }} @ {{ t.rate }}<br>
                 {{ t.app_week|week_label }} &middot; REI {{ t.rei_hours|rei }}<br>
-                Inside: {{ t.inside|yes_no or "?" }} &middot; Outside: {{ t.outside|yes_no or "?" }}</td>
+                Inside: {{ t.inside|yes_no or "?" }} &middot; Outside: {{ t.outside|yes_no or "?" }}<br>
+                {% if t.app_type == "Rotational" %}<b>Rotational:</b> {{ t|rule_text }}{% else %}Responsive{% endif %}</td>
               <td class="nowrap">
                 <a href="{{ url_for('index', a=selected.id if selected else None, edit=t.id) }}">edit</a>
                 <form method="post" action="{{ url_for('delete_template', tid=t.id) }}" class="inline"
@@ -216,6 +255,27 @@
 </div>
 
 <datalist id="species-options"></datalist>
+<datalist id="issue-options">
+  {% for kind, names in issue_suggestions.items() %}{% for n in names %}<option value="{{ n }}" label="{{ kind }}">{% endfor %}{% endfor %}
+</datalist>
+<script>
+// Rotation rule: only for rotational templates; X only for "shifted X weeks ago".
+(function () {
+  var box = document.getElementById("t-rotational");
+  if (!box) return;
+  var rule = document.getElementById("rotation-rule");
+  var plant = document.getElementById("t-plant");
+  var xRow = document.getElementById("rule-x-row");
+  var needsX = {{ needs_x|list|tojson }};
+  function sync() {
+    rule.hidden = !box.checked;
+    xRow.hidden = needsX.indexOf(plant.value) < 0;
+  }
+  box.addEventListener("change", sync);
+  plant.addEventListener("change", sync);
+  sync();
+})();
+</script>
 <script>
 // Fill the shared species datalist from /species/search as the user types.
 (function () {
